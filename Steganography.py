@@ -6,15 +6,15 @@ res_pixels = []
 # +
 def new_blue(pixel, bit):
     lam = 0.1  # then bigger lambda, then data in image are more visible and protected
-    yxy = 0.298*pixel[0]+0.586*pixel[1]+0.114*pixel[2]
+    yxy = int(0.298*pixel[0]+0.586*pixel[1]+0.114*pixel[2])
     # if blue component is 0
     if yxy == 0:
-        yxy = 5/lam
+        yxy = int(5 / lam)
 
     if bit == 1:
-        result = pixel[2] + lam * yxy
+        result = int(pixel[2] + lam * yxy)
     else:
-        result = pixel[2] - lam * yxy
+        result = int(pixel[2] - lam * yxy)
 
     # if component is over
     if result > 255:
@@ -39,81 +39,88 @@ def get_bin_code_of_string(string):
     return bin_form  # int('0b' + bin_form, 2)
 
 
-def encoding(string_in):
-    string = get_bin_code_of_string(string_in)
-    str_length = len(string_in)
+def encoding(string):
+    str_length = len(string)
     r = 5  # Количество встраиваний каждого бита сообщения
-
+    print string
     image = Image.open("test.jpg")
     draw = ImageDraw.Draw(image)
     width = image.size[0]
     height = image.size[1]
     pix = image.load()
 
+    # TODO: поправить coord
     coord = []
-    for i in range(3, width-3, 4):
-        for j in range(3, height-3, 4):
+    amount = str_length * r
+    for i in range(3, width - 3, 4):
+        for j in range(3, height - 3, 4):
             coord.append([i, j])
 
+    index = 0
     for j in range(str_length):
         for iteration in range(r):
-            red = pix[coord[j+iteration][0], coord[j+iteration][1]][0]
-            green = pix[coord[j+iteration][0], coord[j+iteration][1]][1]
+            red = pix[coord[index+iteration][0], coord[index+iteration][1]][0]
+            green = pix[coord[index+iteration][0], coord[index+iteration][1]][1]
             # print pix[i, j]
-            blue = int(new_blue(pix[coord[j+iteration][0], coord[j+iteration][1]], int(string[j])))
-            draw.point((coord[j+iteration][0], coord[j+iteration][1]), (red, green, blue))
-            res_pixels.append([coord[j+iteration], blue])
+            blue = int(new_blue(pix[coord[index+iteration][0], coord[index+iteration][1]], int(string[j])))
+            draw.point((coord[index+iteration][0], coord[index+iteration][1]), (red, green, blue))
+            res_pixels.append([coord[index+iteration], blue, int(string[j])])
+        index += r
     image.save("ans.jpg", "JPEG")
+
     del draw
 
 
 def count_blue_value(pix, i, j):
-    return (pix[i-1, j][2] + pix[i-2, j][2] + pix[i-3, j][2] + pix[i+1, j][2] +
-            pix[i+2, j][2] + pix[i+3, j][2] + pix[i, j-1][2] + pix[i, j-2][2] +
-            pix[i, j-3][2] + pix[i, j+1][2] + pix[i, j+2][2] + pix[i, j+3][2]) / 12
+    summa = pix[i-1, j][2] + pix[i-2, j][2] + pix[i-3, j][2] + pix[i+1, j][2] + pix[i+2, j][2] + pix[i+3, j][2] + pix[i, j-1][2] + pix[i, j-2][2] + pix[i, j-3][2] + pix[i, j+1][2] + pix[i, j+2][2] + pix[i, j+3][2]
+    return summa / 12
 
 
 def decoding(length_message):
-    count = length_message
+    len_message = length_message
     r = 5
     image = Image.open("ans.jpg")
     pix = image.load()
 
     result = ''
-    for i in range(len(res_pixels[0])):
-        if count > 0:
-            prog_values = []
+    for i in range(0, len(res_pixels), r):
+        if len_message > 0:
+            temp_values = []
             for iteration in range(r):
-                x = res_pixels[0][i][0]
-                y = res_pixels[0][i][1]
-                current_pix = pix[x, y]
-                val = count_blue_value(current_pix, x, y)
-                diff = current_pix[2] - val
-
-                if diff == 0 and current_pix[2] == 255:
+                x = res_pixels[i+iteration][0][0]
+                y = res_pixels[i+iteration][0][1]
+                # current_pix = pix[x, y]
+                avg_value = count_blue_value(pix, x, y)
+                diff = res_pixels[i+iteration][1] - avg_value
+                # diff = current_pix[2] - avg_value
+                if diff == 0 and res_pixels[i+iteration][1] == 255:
                     diff = 0.5
-                if diff == 0 and current_pix[2] == 0:
+                if diff == 0 and res_pixels[i+iteration][1] == 0:
                     diff = -0.5
 
                 if diff > 0:
-                    prog_values.append(1)
+                    temp_values.append(1)
                 else:
-                    prog_values.append(0)
-            result += str(int(round(sum(prog_values) / float(r))))
-            count -= 1
+                    temp_values.append(0)
+            result += str(int(round(sum(temp_values) / float(r))))
+            len_message -= 1
         else:
             break
-    print(result)
+    print result
     return result
 
+#
+# string_in = 'ashfb,d,fk'
+# input_str = get_bin_code_of_string(string_in)
+# print input_str
+# print("Input: %s" % input_str)
+input_str = '10101010111111111100000000'
 
-input_str = 'ashfb,d,fk'
-print("Input: %s" % input_str)
 encoding(input_str)
 out = decoding(len(input_str))
 
 count = 0
-for i in range(len(out)):
-    if input_str[i] != out[i]:
+for ind in range(len(out)):
+    if input_str[ind] != out[ind]:
         count += 1
-print (count / (1.0 * len(out)) * 100)
+print 'Error = ' + str(int(count / (1.0 * len(out)) * 100)) + '%'
