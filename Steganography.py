@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from PIL import Image, ImageDraw
 from math import log, sqrt
+import numpy as np
+import matplotlib.pyplot as plt
+
 res_pixels = []  # [coords, new_blue, old_blue, value_inserting_bit]
 
 
@@ -53,8 +56,8 @@ def encoding(string, lambd, sigma):
     # TODO: поправить coord
     coord = []
     amount = str_length * r
-    for i in range(sigma, width - sigma, sigma+1):
-        for j in range(sigma, height - sigma, sigma+1):
+    for i in range(sigma + 3, width - sigma - 1, sigma+1):
+        for j in range(sigma + 3, height - sigma - 1, sigma+1):
             coord.append([i, j])
 
     index = 0
@@ -140,6 +143,7 @@ def diff_pix():
 def test_mse():
     diff = diff_pix()
     mse = float(sqrt(diff[0])) / (diff[1] * diff[2])
+    print "MSE = " + str(mse)
     return mse
 
 
@@ -155,19 +159,75 @@ def test_pnsr():
 
 def test_percent_err(input_data, output_data):
     count = 0
-    for index in range(len(out)):
+    for index in range(len(output_data)):
         if input_data[index] != output_data[index]:
             count += 1
     print 'Error = ' + str(count / (1.0 * len(output_data)) * 100) + '%'
+    return str(count / (1.0 * len(output_data)) * 100)
 
 
-input_str = '10101010111111111100000000111111111111111111111100000000000000000000000000000000000000001010101010101010'
+def test_dependency_on_lambda(string, sigma):
+    lamdas = np.arange(0.01, 0.105, 0.01)
+    errors = []
+    mses = []
+    for l in lamdas:
+        encoding(string, l, sigma)
+        out = decoding(len(string), sigma)
+        errors.append(test_percent_err(string, out))
+        mses.append(test_mse())
 
-sig = 3
-lam = 0.1
-encoding(input_str, lam, sig)
-out = decoding(len(input_str), sig)
+    plt.figure("Error-Lambda")
+    plt.plot(lamdas, errors)
+    plt.ylabel("Error")
+    plt.xlabel("Lambda")
 
-test_percent_err(input_str, out)
-print "MSE = " + str(test_mse())
-print "PNSR = " + str(test_pnsr())
+    plt.figure("MSE-Lambda")
+    plt.plot(lamdas, mses)
+    plt.ylabel("MSE")
+    plt.xlabel("Lambda")
+    # plt.show()
+
+    return lamdas, errors
+
+
+def test_dependency_on_sigma(string, lambd):
+    sigmas = np.arange(1, 6, 1)
+    errors = []
+    mses = []
+    for sigma in sigmas:
+        encoding(string, lambd, sigma)
+        out = decoding(len(string), sigma)
+        errors.append(test_percent_err(string, out))
+        mses.append(test_mse())
+
+    plt.figure("Error-Sigma")
+    plt.plot(sigmas, errors)
+    plt.ylabel("Error")
+    plt.xlabel("Sigma")
+
+    plt.figure("MSE-Sigma")
+    plt.plot(sigmas, mses)
+    plt.ylabel("MSE")
+    plt.xlabel("Sigma")
+    # plt.show()
+
+    return sigmas, errors
+
+
+def start():
+    input_str = '101010101111111111000000001111111111111111111111000000000000000000000000000000000000000010101010101010'
+
+    sig = 3
+    lam = 0.1
+    # encoding(input_str, lam, sig)
+    # out = decoding(len(input_str), sig)
+
+    # test_percent_err(input_str, out)
+    # print "PNSR = " + str(test_pnsr())
+
+    test_dependency_on_lambda(input_str, sig)
+    test_dependency_on_sigma(input_str, lam)
+
+    plt.show()
+
+start()
