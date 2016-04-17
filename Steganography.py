@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from PIL import Image, ImageDraw
-res_pixels = []
+from math import log, sqrt
+res_pixels = []  # [coords, new_blue, old_blue, value_inserting_bit]
 
 
 # +
@@ -59,15 +60,16 @@ def encoding(string):
     index = 0
     for j in range(str_length):
         for iteration in range(r):
-            red = pix[coord[index+iteration][0], coord[index+iteration][1]][0]
-            green = pix[coord[index+iteration][0], coord[index+iteration][1]][1]
+            x = coord[index+iteration][0]
+            y = coord[index+iteration][1]
+            red = pix[x, y][0]
+            green = pix[x, y][1]
             # print pix[i, j]
-            blue = int(new_blue(pix[coord[index+iteration][0], coord[index+iteration][1]], int(string[j])))
-            draw.point((coord[index+iteration][0], coord[index+iteration][1]), (red, green, blue))
-            res_pixels.append([coord[index+iteration], blue, int(string[j])])
+            blue = int(new_blue(pix[x, y], int(string[j])))
+            res_pixels.append([coord[index + iteration], blue, pix[x, y][2], int(string[j])])
+            draw.point((x, y), (red, green, blue))
         index += r
     image.save("ans.jpg", "JPEG")
-
     del draw
 
 
@@ -79,7 +81,7 @@ def count_blue_value(pix, i, j):
 def decoding(length_message):
     len_message = length_message
     r = 5
-    image = Image.open("ans.jpg")
+    image = Image.open("test.jpg")
     pix = image.load()
 
     result = ''
@@ -89,7 +91,7 @@ def decoding(length_message):
             for iteration in range(r):
                 x = res_pixels[i+iteration][0][0]
                 y = res_pixels[i+iteration][0][1]
-                # current_pix = pix[x, y]
+                current_pix = pix[x, y]
                 avg_value = count_blue_value(pix, x, y)
                 diff = res_pixels[i+iteration][1] - avg_value
                 # diff = current_pix[2] - avg_value
@@ -109,18 +111,37 @@ def decoding(length_message):
     print result
     return result
 
-#
+
+def test_sko():
+    summa = 0
+    for i in range(0, len(res_pixels[1]), 5):
+        summa += (res_pixels[i][2] - res_pixels[i][1]) ** 2
+    sko = float(summa) / len(res_pixels[1]) / 5
+    return sko
+
+
+def test_pnsr():
+    result = 20 * log(255 / sqrt(test_sko()), 10)
+    return result
+
+
+def test_percent_err(input_data, output_data):
+    count = 0
+    for index in range(len(out)):
+        if input_data[index] != output_data[index]:
+            count += 1
+    print 'Error = ' + str(count / (1.0 * len(output_data)) * 100) + '%'
+
+
 # string_in = 'ashfb,d,fk'
 # input_str = get_bin_code_of_string(string_in)
 # print input_str
 # print("Input: %s" % input_str)
-input_str = '10101010111111111100000000'
+input_str = '10101010111111111100000000111111111111111111111100000000000000000000000000000000000000001010101010101010'
 
 encoding(input_str)
 out = decoding(len(input_str))
 
-count = 0
-for ind in range(len(out)):
-    if input_str[ind] != out[ind]:
-        count += 1
-print 'Error = ' + str(int(count / (1.0 * len(out)) * 100)) + '%'
+test_percent_err(input_str, out)
+print "SKO = " + str(test_sko())
+print "POSSH = " + str(test_pnsr())
